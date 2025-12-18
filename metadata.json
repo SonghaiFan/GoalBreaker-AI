@@ -1,0 +1,5 @@
+{
+  "name": "GoalBreaker AI",
+  "description": "An intelligent goal decomposition tool that breaks down complex objectives into actionable, bite-sized tasks using Gemini AI.",
+  "requestFramePermissions": []
+}
