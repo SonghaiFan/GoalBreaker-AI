@@ -91,7 +91,7 @@ const PlanStats: React.FC<PlanStatsProps> = ({ plan, language }) => {
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-24 stagger-reveal" style={{ animationDelay: '0.2s' }}>
       
       {/* 1. ORBIT CHART (Donut) for Difficulty */}
-      <div className="diffused-card p-6 rounded-3xl flex flex-col justify-between min-h-[240px]">
+      <div className="diffused-card p-6 rounded-3xl flex flex-col justify-between min-h-[240px] w-full">
         <div className="flex justify-between items-start">
             <h3 className="text-[10px] font-mono uppercase opacity-40 tracking-widest text-ink">
             {t.difficultyTitle}
@@ -105,8 +105,8 @@ const PlanStats: React.FC<PlanStatsProps> = ({ plan, language }) => {
             </div>
         </div>
 
-        <div className="relative h-40 w-full mt-2">
-          <ResponsiveContainer width="100%" height="100%">
+        <div className="relative h-40 w-full mt-2 min-w-0">
+          <ResponsiveContainer width="100%" height="100%" minWidth={0}>
             <PieChart>
               <Pie
                 data={difficultyData}
@@ -150,7 +150,7 @@ const PlanStats: React.FC<PlanStatsProps> = ({ plan, language }) => {
       </div>
 
       {/* 2. STRATA BARS (Custom CSS Progress) for Task Types */}
-      <div className="diffused-card p-6 rounded-3xl flex flex-col min-h-[240px]">
+      <div className="diffused-card p-6 rounded-3xl flex flex-col min-h-[240px] w-full">
         <h3 className="text-[10px] font-mono uppercase opacity-40 tracking-widest text-ink mb-6">
           {t.compositionTitle}
         </h3>
