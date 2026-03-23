@@ -1,7 +1,10 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { PlanResponse, Difficulty, TaskType, Language } from "../types";
 
-const apiKey = process.env.API_KEY;
+const apiKey =
+  (import.meta as any).env?.VITE_GEMINI_API_KEY ||
+  (typeof process !== 'undefined' ? process.env?.GEMINI_API_KEY : undefined) ||
+  (typeof process !== 'undefined' ? process.env?.API_KEY : undefined);
 
 // Initialize Gemini Client
 const ai = new GoogleGenAI({ apiKey: apiKey });
@@ -75,7 +78,7 @@ const naiveJsonRepair = (jsonStr: string): string => {
 
 export const generateGoalPlan = async (goal: string, language: Language, options: GenOptions = {}): Promise<PlanResponse> => {
   if (!apiKey) {
-    throw new Error("API Key is missing. Please check your environment configuration.");
+    throw new Error("Gemini API key is missing. Set VITE_GEMINI_API_KEY or GEMINI_API_KEY in .env.local.");
   }
 
   const isSubTask = options.isSubTask || false;
