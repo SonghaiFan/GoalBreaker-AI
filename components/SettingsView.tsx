@@ -48,19 +48,19 @@ const SettingsView: React.FC<SettingsViewProps> = ({ language, setLanguage, onCl
         onClick={onClose}
       ></div>
       
-      <div className="diffused-card w-full max-w-md p-8 rounded-3xl relative z-10 animate-slide-up bg-white/80 shadow-2xl border-white/20">
+      <div className="diffused-card w-full max-w-md p-8 rounded-3xl relative z-10 animate-slide-up bg-surface/80 shadow-2xl border-white/20">
         
         {/* Header */}
         <div className="flex justify-between items-center mb-10">
            <div className="flex items-center gap-3">
-             <div className="w-1.5 h-1.5 bg-black rounded-full opacity-20"></div>
+             <div className="w-1.5 h-1.5 bg-ink rounded-full opacity-20"></div>
              <h2 className="font-mono text-xs uppercase tracking-widest text-ink opacity-60">{t.title}</h2>
            </div>
            <button 
              onClick={onClose} 
-             className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-black/5 transition-colors group"
+             className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-ink/5 transition-colors group"
            >
-             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="opacity-40 group-hover:opacity-100 transition-opacity">
+             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-ink opacity-40 group-hover:opacity-100 transition-opacity">
                <path d="M18 6L6 18M6 6l12 12" />
              </svg>
            </button>
@@ -69,18 +69,17 @@ const SettingsView: React.FC<SettingsViewProps> = ({ language, setLanguage, onCl
         <div className="space-y-10">
             {/* Language */}
             <div>
-                <label className="block text-[10px] font-mono font-bold uppercase tracking-widest mb-4 opacity-30">{t.lang}</label>
-                <div className="flex bg-black/5 p-1.5 rounded-2xl relative">
-                    {/* Animated background pill could be added here for extra flair, but clean switching works well */}
+                <label className="block text-[10px] font-mono font-bold uppercase tracking-widest mb-4 opacity-30 text-ink">{t.lang}</label>
+                <div className="flex bg-ink/5 p-1.5 rounded-2xl relative">
                     <button 
                         onClick={() => setLanguage('en')}
-                        className={`flex-1 py-3 rounded-xl text-xs font-medium transition-all duration-300 ${language === 'en' ? 'bg-white shadow-sm text-black scale-[1.02]' : 'text-black/40 hover:text-black/70'}`}
+                        className={`flex-1 py-3 rounded-xl text-xs font-medium transition-all duration-300 ${language === 'en' ? 'bg-paper shadow-sm text-ink scale-[1.02]' : 'text-ink/40 hover:text-ink/70'}`}
                     >
                         English
                     </button>
                     <button 
                         onClick={() => setLanguage('zh')}
-                        className={`flex-1 py-3 rounded-xl text-xs font-medium transition-all duration-300 ${language === 'zh' ? 'bg-white shadow-sm text-black scale-[1.02]' : 'text-black/40 hover:text-black/70'}`}
+                        className={`flex-1 py-3 rounded-xl text-xs font-medium transition-all duration-300 ${language === 'zh' ? 'bg-paper shadow-sm text-ink scale-[1.02]' : 'text-ink/40 hover:text-ink/70'}`}
                     >
                         中文
                     </button>
@@ -88,18 +87,18 @@ const SettingsView: React.FC<SettingsViewProps> = ({ language, setLanguage, onCl
             </div>
 
             {/* Divider */}
-            <div className="h-[1px] bg-gradient-to-r from-transparent via-black/5 to-transparent w-full"></div>
+            <div className="h-[1px] bg-gradient-to-r from-transparent via-ink/5 to-transparent w-full"></div>
 
             {/* Data */}
             <div>
-                <label className="block text-[10px] font-mono font-bold uppercase tracking-widest mb-4 opacity-30">{t.data}</label>
+                <label className="block text-[10px] font-mono font-bold uppercase tracking-widest mb-4 opacity-30 text-ink">{t.data}</label>
                 <button 
                     onClick={handleClear}
                     className={`
                         w-full border-2 rounded-2xl py-4 text-xs font-mono transition-all duration-300 flex items-center justify-center gap-2
                         ${confirmClear 
                             ? 'bg-red-50 border-red-200 text-red-600 shadow-inner' 
-                            : 'border-transparent bg-white/50 hover:bg-red-50 hover:border-red-100 hover:text-red-600 text-ink opacity-60 hover:opacity-100 hover:shadow-sm'
+                            : 'border-transparent bg-surface/50 hover:bg-red-50 hover:border-red-100 hover:text-red-600 text-ink opacity-60 hover:opacity-100 hover:shadow-sm'
                         }
                     `}
                 >

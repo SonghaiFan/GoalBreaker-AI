@@ -1,16 +1,20 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { PlanResponse, Difficulty, TaskType, Language } from "../types";
 
-const apiKey =
-  (import.meta as any).env?.VITE_GEMINI_API_KEY ||
-  (typeof process !== 'undefined' ? process.env?.GEMINI_API_KEY : undefined) ||
-  (typeof process !== 'undefined' ? process.env?.API_KEY : undefined);
+const apiKey = process.env.API_KEY;
 
 // Initialize Gemini Client
 const ai = new GoogleGenAI({ apiKey: apiKey });
 
+interface TaskContext {
+  duration: string;
+  description?: string;
+  isRecurring?: boolean;
+}
+
 interface GenOptions {
-  isSubTask?: boolean;
+  parentContext?: string; // The title of the parent goal, to give the AI context scope
+  parentTaskContext?: TaskContext; // Specific constraints from the parent task (duration, etc.)
   onPartialUpdate?: (plan: PlanResponse) => void;
 }
 
@@ -78,61 +82,70 @@ const naiveJsonRepair = (jsonStr: string): string => {
 
 export const generateGoalPlan = async (goal: string, language: Language, options: GenOptions = {}): Promise<PlanResponse> => {
   if (!apiKey) {
-    throw new Error("Gemini API key is missing. Set VITE_GEMINI_API_KEY or GEMINI_API_KEY in .env.local.");
+    throw new Error("API Key is missing. Please check your environment configuration.");
   }
 
-  const isSubTask = options.isSubTask || false;
+  const parentContextInfo = options.parentContext 
+    ? `CONTEXT: This goal is a sub-component of a larger objective: "${options.parentContext}".` 
+    : "CONTEXT: This is a Root Level objective.";
+
+  let timeConstraintInfo = "";
+  if (options.parentTaskContext) {
+      timeConstraintInfo = `
+      CRITICAL CONSTRAINTS:
+      1. TOTAL DURATION LIMIT: The entire plan must fit within "${options.parentTaskContext.duration}".
+      2. SCOPE: Bound by parent task description: "${options.parentTaskContext.description || 'N/A'}".
+      ${options.parentTaskContext.isRecurring ? "3. RECURRENCE: This defines the routine for a single cycle of the parent task." : ""}
+      `;
+  }
   
   const langInstruction = language === 'zh' 
     ? "OUTPUT LANGUAGE: CHINESE (Simplified). All titles, descriptions, summaries, and quotes MUST be in Chinese." 
     : "OUTPUT LANGUAGE: ENGLISH.";
 
-  // --- PROMPT STRATEGY 1: ROOT GOAL (Strategic, Phased, Daily/Weekly units) ---
-  const rootPrompt = `
-    Act as an expert strategic planner.
+  // --- FIRST PRINCIPLES STRATEGY PROMPT ---
+  const adaptivePrompt = `
+    Act as a Strategic Architect using **FIRST PRINCIPLES THINKING**.
     User Goal: "${goal}"
+    ${parentContextInfo}
+    ${timeConstraintInfo}
     ${langInstruction}
 
-    Your Objective: Create a High-Level Roadmap.
+    YOUR CORE PHILOSOPHY:
+    1. **Reject Analogy**: Do not simply copy how others do things. Do not produce a generic "to-do list".
+    2. **Boil Down to Axioms**: Deconstruct the goal into its most fundamental truths. What is actually required to make this happen from a logic standpoint?
+    3. **Rebuild from Ground Up**: Construct a protocol based *only* on these fundamental components.
+    4. **Optimize for Efficiency**: Find the most direct path between the current state and the goal state, ignoring convention.
 
-    STRATEGY:
-    1. **Hierarchy**: 
-       - Level 1: **Phases** (Time-bound stages e.g., "Phase 1: Preparation", "Phase 2: Execution" OR Recurring Cycles e.g., "Weekly Routine").
-       - Level 2: **Steps** MUST be **Days**, **Weeks**, or **Sessions**. (e.g., "Day 1: Setup Environment", "Week 2: Advanced Topics", "Monday: Chest Day").
-    
-    2. **Granularity Rules (CRITICAL)**: 
-       - **FORBIDDEN**: Do NOT list granular hourly tasks (e.g., "Read page 5", "Install software"). 
-       - The smallest unit at this root level must be a **DAY** or a **MAJOR SESSION**.
-       - **'isBreakable'**: MUST be **true** for ALL steps at this level (because a 'Day' can always be broken down into hours).
+    --- DECISION LOGIC (MACRO vs MICRO) ---
 
-    3. **Recurring/Cycle**:
-       - If the goal implies a repeating routine (e.g., "Lose weight", "Learn Piano"), create a Phase with 'isRecurring': true.
-       - The steps inside should be the repeating units (e.g., "Morning Practice", "Evening Review" OR "Monday", "Tuesday").
+    **CASE A: MACRO STRATEGY (Strategic/High-Level)**
+    - TRIGGER: If the goal takes **MORE THAN 24 HOURS**, requires learning, or complex assembly.
+    - STRUCTURE: 
+       1. **Phases**: Group steps into logical Phases.
+       2. **Steps**: MIXED DURATIONS ALLOWED. 
+          - **Simple Steps**: Use **HOURS**.
+          - **Complex Steps**: Use **DAYS** or **WEEKS**.
+       3. **'isBreakable'**: **TRUE** for most steps.
 
-    Data Rules:
-    - 'estimatedDuration': Should be "1 Day", "3 Days", "1 Week", "2 Hours Session" (Must imply a composite block of time).
-    - 'isBreakable': true.
+    **CASE B: MICRO STRATEGY (Tactical/Execution)**
+    - TRIGGER: If the goal is a specific task (< 24 HOURS) or has a strict "TOTAL DURATION LIMIT" (e.g. "1 Hour").
+    - STRUCTURE:
+       1. **Phases**: Return exactly ONE Phase named "Execution Protocol" (or "执行流程").
+       2. **Steps**: Must be **HOURS** or **MINUTES**.
+       3. **'isBreakable'**: MUST be **FALSE**.
+
+    **OVERRIDE RULE:**
+    If a "TOTAL DURATION LIMIT" is provided, you MUST strictly respect it.
+
+    --- CONTENT REQUIREMENTS ---
+    - **Goal Title**: Simplify the user's input into a concise, punchy title (max 5-7 words).
+    - **Summary**: Explain the "First Principles" logic. Why is this the most efficient path? What fundamental truth is this based on?
+    - **Motivational Quote**: Provide a quote about that fits the context.
+    - **Steps**: Be actionable, direct, and non-bureaucratic.
+
+    GENERATE THE JSON NOW based on this First Principles analysis.
   `;
-
-  // --- PROMPT STRATEGY 2: SUB-TASK (Tactical, Hourly) ---
-  const subTaskPrompt = `
-    Act as an Execution Specialist.
-    Context: The user needs to complete a specific sub-unit of a larger goal: "${goal}".
-    ${langInstruction}
-
-    Your Objective: Break this specific "Day" or "Session" into immediately executable, atomic hourly steps.
-
-    STRATEGY:
-    1. **NO PHASES**: Create a single flow of execution.
-    2. **HOURLY LIMIT**: Every single step MUST be small enough to complete in **1 HOUR or less**.
-       - If a step takes 2 hours, split it: "Part 1", "Part 2".
-    3. **ATOMICITY**: 'isBreakable': false (These are the leaves of the tree).
-
-    Structure:
-    - Return a single Phase named "Execution Protocol".
-  `;
-
-  const selectedPrompt = isSubTask ? subTaskPrompt : rootPrompt;
 
   // We generate a persistent ID for the plan upfront so partial updates share the same ID
   const planId = crypto.randomUUID();
@@ -140,15 +153,15 @@ export const generateGoalPlan = async (goal: string, language: Language, options
 
   const responseStream = await ai.models.generateContentStream({
     model: "gemini-3-pro-preview",
-    contents: selectedPrompt,
+    contents: adaptivePrompt,
     config: {
       responseMimeType: "application/json",
       responseSchema: {
         type: Type.OBJECT,
         properties: {
-          goal: { type: Type.STRING, description: "The goal title" },
-          summary: { type: Type.STRING, description: "Executive summary" },
-          motivationalQuote: { type: Type.STRING, description: "Motivational quote" },
+          goal: { type: Type.STRING, description: "A concise, high-impact title for the plan (max 5-7 words). Simplify the input." },
+          summary: { type: Type.STRING, description: "First Principles Analysis: Why this approach?" },
+          motivationalQuote: { type: Type.STRING, description: "Quote about innovation/physics" },
           phases: {
             type: Type.ARRAY,
             items: {
@@ -169,7 +182,7 @@ export const generateGoalPlan = async (goal: string, language: Language, options
                       title: { type: Type.STRING, description: "Task title" },
                       description: { type: Type.STRING, description: "Instruction" },
                       estimatedDuration: { type: Type.STRING, description: "Duration e.g. '45 mins', '1 Day'" },
-                      isBreakable: { type: Type.BOOLEAN, description: "True if task > 1 hour" },
+                      isBreakable: { type: Type.BOOLEAN, description: "TRUE if Macro (needs breakdown), FALSE if Micro (atomic)" },
                       difficulty: { 
                         type: Type.STRING, 
                         enum: [Difficulty.Easy, Difficulty.Medium, Difficulty.Hard]
@@ -209,7 +222,7 @@ export const generateGoalPlan = async (goal: string, language: Language, options
                       id: planId,
                       createdAt: timestamp,
                       goal: partialObj.goal || goal,
-                      summary: partialObj.summary || "Generating strategy...",
+                      summary: partialObj.summary || "Deriving axioms...",
                       motivationalQuote: partialObj.motivationalQuote || "...",
                       phases: partialObj.phases || []
                   });

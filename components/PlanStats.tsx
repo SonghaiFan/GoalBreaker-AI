@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { PlanResponse, Difficulty, TaskType, Language } from '../types';
 
 interface PlanStatsProps {
@@ -7,19 +7,17 @@ interface PlanStatsProps {
   language: Language;
 }
 
-// Monochrome/Ink palette
 const COLORS = {
-  [Difficulty.Easy]: '#e5e5e5',   // light gray
-  [Difficulty.Medium]: '#a3a3a3', // medium gray
-  [Difficulty.Hard]: '#171717',   // almost black
+  [Difficulty.Easy]: 'var(--chart-easy)',
+  [Difficulty.Medium]: 'var(--chart-medium)',
+  [Difficulty.Hard]: 'var(--chart-hard)',
 };
 
-// Task Type Colors for the progress bars
 const TYPE_COLORS = {
-  [TaskType.Research]: 'bg-zinc-800', 
-  [TaskType.Action]: 'bg-zinc-600',   
-  [TaskType.Milestone]: 'bg-zinc-400',
-  [TaskType.Preparation]: 'bg-zinc-200' 
+  [TaskType.Research]: 'bg-ink/80', 
+  [TaskType.Action]: 'bg-ink/60',   
+  [TaskType.Milestone]: 'bg-ink/40',
+  [TaskType.Preparation]: 'bg-ink/20' 
 };
 
 const translations = {
@@ -52,15 +50,18 @@ const translations = {
 const PlanStats: React.FC<PlanStatsProps> = ({ plan, language }) => {
   const t = translations[language];
 
-  // Flatten all steps from all phases
   const allSteps = useMemo(() => {
-    return plan.phases.flatMap(phase => phase.steps);
+    if (!plan?.phases) return [];
+    return plan.phases
+        .flatMap(phase => phase.steps || [])
+        .filter(step => step && step.difficulty && step.type);
   }, [plan]);
 
   const totalSteps = allSteps.length;
 
   const difficultyData = useMemo(() => {
     const counts = allSteps.reduce((acc, step) => {
+      if (!step?.difficulty) return acc;
       acc[step.difficulty] = (acc[step.difficulty] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
@@ -74,46 +75,49 @@ const PlanStats: React.FC<PlanStatsProps> = ({ plan, language }) => {
 
   const typeData = useMemo(() => {
     const counts = allSteps.reduce((acc, step) => {
+      if (!step?.type) return acc;
       acc[step.type] = (acc[step.type] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
 
-    // Sort by count descending for better visual stacking
     return Object.keys(TYPE_COLORS).map(key => ({
       name: t[key as TaskType], 
       originalKey: key as TaskType,
       value: counts[key] || 0,
-      percentage: Math.round(((counts[key] || 0) / totalSteps) * 100)
+      percentage: totalSteps > 0 ? Math.round(((counts[key] || 0) / totalSteps) * 100) : 0
     })).filter(d => d.value > 0).sort((a, b) => b.value - a.value);
   }, [allSteps, totalSteps, t]);
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-24 stagger-reveal" style={{ animationDelay: '0.2s' }}>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-20 md:mb-24 stagger-reveal">
       
-      {/* 1. ORBIT CHART (Donut) for Difficulty */}
-      <div className="diffused-card p-6 rounded-3xl flex flex-col justify-between min-h-[240px] w-full">
-        <div className="flex justify-between items-start">
-            <h3 className="text-[10px] font-mono uppercase opacity-40 tracking-widest text-ink">
+      {/* Orbit Chart */}
+      <div className="diffused-card p-5 md:p-6 rounded-3xl flex flex-col min-h-[220px] md:min-h-[240px] w-full">
+        <div className="flex justify-between items-start mb-4">
+            <h3 className="text-[9px] font-mono uppercase opacity-40 tracking-widest text-ink">
             {t.difficultyTitle}
             </h3>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap justify-end gap-x-3 gap-y-1">
                 {difficultyData.map((d, i) => (
-                    <div key={i} className="flex items-center gap-1">
+                    <div key={i} className="flex items-center gap-1.5">
                         <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: COLORS[d.originalKey as Difficulty] }}></div>
+                        <span className="text-[8px] font-mono uppercase tracking-wide text-ink opacity-60">
+                            {d.name} <span className="text-ink font-bold opacity-100">{d.value}</span>
+                        </span>
                     </div>
                 ))}
             </div>
         </div>
 
-        <div className="relative h-40 w-full mt-2 min-w-0">
-          <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+        <div className="relative h-32 md:h-40 w-full min-w-0">
+          <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
                 data={difficultyData}
                 cx="50%"
                 cy="50%"
-                innerRadius={55}
-                outerRadius={70}
+                innerRadius={window.innerWidth < 768 ? 40 : 55}
+                outerRadius={window.innerWidth < 768 ? 55 : 70}
                 paddingAngle={4}
                 cornerRadius={4}
                 dataKey="value"
@@ -123,56 +127,34 @@ const PlanStats: React.FC<PlanStatsProps> = ({ plan, language }) => {
                   <Cell key={`cell-${index}`} fill={COLORS[entry.originalKey as Difficulty]} />
                 ))}
               </Pie>
-              <Tooltip 
-                cursor={false}
-                content={({ active, payload }) => {
-                    if (active && payload && payload.length) {
-                    const data = payload[0].payload;
-                    return (
-                        <div className="bg-white/90 backdrop-blur-md border border-black/5 px-3 py-2 rounded-lg shadow-xl">
-                            <p className="font-mono text-[10px] uppercase tracking-wider opacity-50">{data.name}</p>
-                            <p className="text-sm font-bold text-ink">{data.value} Steps</p>
-                        </div>
-                    );
-                    }
-                    return null;
-                }}
-              />
             </PieChart>
           </ResponsiveContainer>
           
-          {/* Central Counter */}
           <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                <span className="text-3xl font-extrabold tracking-tight text-ink">{totalSteps}</span>
-                <span className="text-[9px] font-mono uppercase tracking-widest opacity-40">{t.totalNodes}</span>
+                <span className="text-2xl md:text-3xl font-extrabold tracking-tight text-ink">{totalSteps}</span>
+                <span className="text-[8px] font-mono uppercase tracking-widest opacity-40 text-ink">{t.totalNodes}</span>
           </div>
         </div>
       </div>
 
-      {/* 2. STRATA BARS (Custom CSS Progress) for Task Types */}
-      <div className="diffused-card p-6 rounded-3xl flex flex-col min-h-[240px] w-full">
-        <h3 className="text-[10px] font-mono uppercase opacity-40 tracking-widest text-ink mb-6">
+      {/* Strata Bars */}
+      <div className="diffused-card p-5 md:p-6 rounded-3xl flex flex-col min-h-[220px] md:min-h-[240px] w-full">
+        <h3 className="text-[9px] font-mono uppercase opacity-40 tracking-widest text-ink mb-6">
           {t.compositionTitle}
         </h3>
         
-        <div className="flex flex-col justify-center flex-1 gap-5">
+        <div className="flex flex-col justify-center flex-1 gap-4 md:gap-5">
             {typeData.map((type) => (
-                <div key={type.originalKey} className="group">
-                    <div className="flex justify-between items-end mb-2">
-                        <span className="text-xs font-bold text-ink tracking-tight">{type.name}</span>
-                        <div className="flex items-baseline gap-1">
-                            <span className="font-mono text-xs opacity-100">{type.value}</span>
-                            <span className="font-mono text-[9px] opacity-40">%</span>
-                        </div>
+                <div key={type.originalKey}>
+                    <div className="flex justify-between items-end mb-1.5">
+                        <span className="text-[11px] font-bold text-ink tracking-tight">{type.name}</span>
+                        <span className="font-mono text-[10px] opacity-60 text-ink">{type.value}</span>
                     </div>
-                    {/* Progress Bar Container */}
-                    <div className="h-1.5 w-full bg-black/5 rounded-full overflow-hidden relative">
+                    <div className="h-1 w-full bg-ink/5 rounded-full overflow-hidden relative">
                         <div 
-                            className={`h-full ${TYPE_COLORS[type.originalKey]} rounded-full relative z-10`} 
+                            className={`h-full ${TYPE_COLORS[type.originalKey]} rounded-full`} 
                             style={{ width: `${type.percentage}%` }}
                         ></div>
-                        {/* Subtle gloss effect on the bar */}
-                        <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent z-20 pointer-events-none"></div>
                     </div>
                 </div>
             ))}

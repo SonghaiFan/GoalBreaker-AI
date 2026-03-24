@@ -20,7 +20,7 @@ const translations = {
     [TaskType.Preparation]: "Preparation"
   },
   zh: {
-    decompose: "拆解",
+    decompose: "可拆解",
     [Difficulty.Easy]: "简单",
     [Difficulty.Medium]: "中等",
     [Difficulty.Hard]: "困难",
@@ -40,8 +40,8 @@ const PlanStepItem: React.FC<PlanStepItemProps> = ({ step, language, onBreakdown
         className={`
             diffused-card p-5 rounded-2xl group flex justify-between items-center relative overflow-hidden
             ${step.isBreakable && !disabled
-                ? 'cursor-pointer border-l-[3px] border-l-black/80 pl-4' // Slight visual indicator for interactive cards
-                : 'cursor-default border-l-[3px] border-l-transparent pl-4'
+                ? 'cursor-pointer'
+                : 'cursor-default'
             }
             ${disabled ? 'opacity-50 pointer-events-none' : ''}
             /* Note: Hover lift and shadow are handled by .diffused-card in index.html */
@@ -53,7 +53,7 @@ const PlanStepItem: React.FC<PlanStepItemProps> = ({ step, language, onBreakdown
                     {t[step.type]} • {step.estimatedDuration}
                 </span>
                 {step.isBreakable && (
-                    <span className="bg-black/5 text-ink/60 px-1.5 py-0.5 rounded text-[9px] font-mono uppercase tracking-tight">
+                    <span className="bg-ink/5 text-ink/60 px-1.5 py-0.5 rounded text-[9px] font-mono uppercase tracking-tight">
                         {t.decompose}
                     </span>
                 )}
